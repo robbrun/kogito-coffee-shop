@@ -1,4 +1,5 @@
 # Steps to be followed to execute these projects
+Updated Quarkus to 2.16.x
 
 Follow the steps outlined here:
 
