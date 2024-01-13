@@ -3,7 +3,8 @@ version: '3'
 services:
 
   zookeeper:
-    image: strimzi/kafka:0.14.0-kafka-2.3.0
+#    image: strimzi/kafka:0.14.0-kafka-2.3.0
+    image: strimzi/kafka:0.20.1-kafka-2.6.0
     command: [
       "sh", "-c",
       "bin/zookeeper-server-start.sh config/zookeeper.properties"
@@ -14,7 +15,8 @@ services:
       LOG_DIR: /tmp/logs
 
   infinispan:
-    image: docker.io/jboss/infinispan-server:10.1
+#    image: docker.io/jboss/infinispan-server:10.1
+    image: quay.io/infinispan/server:14.0.5.Final
     command: [
       "sh", "-c",
       "./bin/launch.sh"
@@ -26,7 +28,8 @@ services:
       PASS: infinispan
 
   keycloak:
-    image: docker.io/jboss/keycloak:9.0.0
+#    image: docker.io/jboss/keycloak:9.0.0
+    image: quay.io/keycloak/keycloak:legacy
     command: [
       "-b",
       "0.0.0.0"
@@ -41,23 +44,26 @@ services:
       - ./kogito-realm.json:/tmp/kogito-realm.json
   
   dataindex:
-    image: quay.io/kiegroup/kogito-data-index:0.9.0-rc1
+    #image: quay.io/kiegroup/kogito-data-index:0.9.0-rc1
+    image: quay.io/kiegroup/kogito-data-index-infinispan:1.41
     network_mode: 'host' 
     restart: on-failure
     ports:
-      - "8480:8180"
+      - "8190:8180"
     depends_on:
       - infinispan
     environment:
       INFINISPAN_AUTHREALM: default 
       INFINISPAN_PASSWORD: infinispan 
-      INFINISPAN_USERNAME: infinispan 
+#      INFINISPAN_USERNAME: infinispan 
+      INFINISPAN_USERNAME: admin
       INFINISPAN_SASLMECHANISM: PLAIN 
       INFINISPAN_USEAUTH: "true"
-      KOGITO_DATA_INDEX_HTTP_PORT: 8480
+      KOGITO_DATA_INDEX_HTTP_PORT: 8190
 
   management:
-    image: quay.io/kiegroup/kogito-management-console:0.9.0-rc1
+    image: quay.io/kiegroup/kogito-management-console:1.41
+#    image: quay.io/kiegroup/kogito-management-console:0.9.0-rc1
     network_mode: 'host'
     restart: on-failure
     ports:
@@ -66,10 +72,11 @@ services:
       - dataindex
     environment:
       KOGITO_DATA_INDEX_PROPS: "-Dquarkus.http.port=8380"
-      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8480"
+      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8190"
 
   kafka:
-    image: strimzi/kafka:0.14.0-kafka-2.3.0
+#    image: strimzi/kafka:0.14.0-kafka-2.3.0
+    image: strimzi/kafka:0.20.1-kafka-2.6.0
     command: [
       "sh", "-c",
       "bin/kafka-server-start.sh config/server.properties --override listeners=$${KAFKA_LISTENERS} --override advertised.listeners=$${KAFKA_ADVERTISED_LISTENERS} --override zookeeper.connect=$${KAFKA_ZOOKEEPER_CONNECT}"

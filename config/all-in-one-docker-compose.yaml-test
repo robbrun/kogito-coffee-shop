@@ -3,7 +3,7 @@ version: '3'
 services:
 
   zookeeper:
-    image: strimzi/kafka:0.14.0-kafka-2.3.0
+    image: docker.io/strimzi/kafka:0.20.1-kafka-2.6.0
     command: [
       "sh", "-c",
       "bin/zookeeper-server-start.sh config/zookeeper.properties"
@@ -14,19 +14,25 @@ services:
       LOG_DIR: /tmp/logs
 
   infinispan:
-    image: docker.io/jboss/infinispan-server:10.1
-    command: [
-      "sh", "-c",
-      "./bin/launch.sh"
-    ]
+    image: docker.io/infinispan/server:14.0.21.Final
+    container_name: infinispan
     ports:
-      - "11222:11222"
+        - "11222:11222"
     environment:
       USER: infinispan
       PASS: infinispan
+#    command: "-c infinispan-demo.xml"
+#    volumes:
+#      - ./infinispan/infinispan.xml:/opt/infinispan/server/conf/infinispan-demo.xml:z
+#    healthcheck:
+#      test: [ "CMD", "curl", "-f", "http://localhost:11222/rest/v2/cache-managers/default/health/status" ]
+#      interval: 1s
+#      timeout: 1s
+#      retries: 50
 
   keycloak:
     image: docker.io/jboss/keycloak:9.0.0
+#    image: quay.io/keycloak/keycloak:legacy
     command: [
       "-b",
       "0.0.0.0"
@@ -41,11 +47,12 @@ services:
       - ./kogito-realm.json:/tmp/kogito-realm.json
   
   dataindex:
-    image: quay.io/kiegroup/kogito-data-index:0.9.0-rc1
+    #image: quay.io/kiegroup/kogito-data-index:0.9.0-rc1
+    image: quay.io/kiegroup/kogito-data-index-infinispan:1.44
     network_mode: 'host' 
     restart: on-failure
     ports:
-      - "8480:8180"
+      - "8190:8180"
     depends_on:
       - infinispan
     environment:
@@ -54,10 +61,12 @@ services:
       INFINISPAN_USERNAME: infinispan 
       INFINISPAN_SASLMECHANISM: PLAIN 
       INFINISPAN_USEAUTH: "true"
-      KOGITO_DATA_INDEX_HTTP_PORT: 8480
+      KOGITO_DATA_INDEX_HTTP_PORT: 8190
 
   management:
+#    image: quay.io/kiegroup/kogito-management-console:0.10.0-rc2
     image: quay.io/kiegroup/kogito-management-console:0.9.0-rc1
+#    image: quay.io/kiegroup/kogito-management-console:1.41
     network_mode: 'host'
     restart: on-failure
     ports:
@@ -65,11 +74,16 @@ services:
     depends_on:
       - dataindex
     environment:
+#      KOGITO_DATAINDEX_HTTP_URL: "http://host.containers.internal:8190/graphql"
+#      KOGITO_DATAINDEX_HTTP_URL: http://${DOCKER_GATEWAY_HOST:-host.docker.internal}:8190/graphql
+#      QUARKUS_HTTP_CORS_ORIGINS: "/.*/"
+#      KOGITO_MANAGEMENT_CONSOLE_PROPS: -Dkogito.consoles.keycloak.config.url=http://host.containers.internal:8280/auth
+#      KOGITO_MANAGEMENT_CONSOLE_PROPS: -Dkogito.consoles.keycloak.config.url=http://localhost:8280/auth -Dkogito.consoles.keycloak.config.health-check-url=http://localhost:8280/auth/realms/kogito/.well-known/openid-configuration -Dkogito.svg.folder.path=/home/kogito/data/svg    
       KOGITO_DATA_INDEX_PROPS: "-Dquarkus.http.port=8380"
-      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8480"
+      KOGITO_DATAINDEX_HTTP_URL: "http://localhost:8190"
 
   kafka:
-    image: strimzi/kafka:0.14.0-kafka-2.3.0
+    image: docker.io/strimzi/kafka:0.20.1-kafka-2.6.0
     command: [
       "sh", "-c",
       "bin/kafka-server-start.sh config/server.properties --override listeners=$${KAFKA_LISTENERS} --override advertised.listeners=$${KAFKA_ADVERTISED_LISTENERS} --override zookeeper.connect=$${KAFKA_ZOOKEEPER_CONNECT}"
